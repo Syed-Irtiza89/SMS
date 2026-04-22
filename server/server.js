@@ -21,6 +21,23 @@ if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID.startsWith(
 }
 
 // ----------------------
+// Login Endpoint
+// ----------------------
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    const adminUser = process.env.ADMIN_USERNAME || 'admin';
+    const adminPass = process.env.ADMIN_PASSWORD || 'admin';
+    const secret = process.env.JWT_SECRET || 'fallback_secret_for_demo';
+
+    if (username === adminUser && password === adminPass) {
+        const token = jwt.sign({ username }, secret, { expiresIn: '24h' });
+        res.json({ token, username });
+    } else {
+        res.status(401).json({ error: 'Invalid username or password' });
+    }
+});
+
+// ----------------------
 // Auth Middleware
 // ----------------------
 const authenticateToken = (req, res, next) => {
@@ -29,25 +46,13 @@ const authenticateToken = (req, res, next) => {
 
     if (!token) return res.status(401).json({ error: 'Access denied. No token provided.' });
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    const secret = process.env.JWT_SECRET || 'fallback_secret_for_demo';
+    jwt.verify(token, secret, (err, user) => {
         if (err) return res.status(403).json({ error: 'Invalid or expired token.' });
         req.user = user;
         next();
     });
 };
-
-// ----------------------
-// Login Endpoint
-// ----------------------
-app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-        const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: '24h' });
-        res.json({ token, username });
-    } else {
-        res.status(401).json({ error: 'Invalid username or password' });
-    }
-});
 
 // ----------------------
 // Contacts API Endpoints
