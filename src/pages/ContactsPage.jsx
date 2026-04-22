@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { UploadCloud, Plus, Trash2 } from 'lucide-react';
+import { mockApi } from '../api';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const ContactsPage = () => {
   const [contacts, setContacts] = useState([]);
@@ -12,23 +12,9 @@ const ContactsPage = () => {
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState({ text: '', type: '' });
 
-  const getHeaders = () => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-  });
-
   const fetchContacts = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/contacts`, { headers: getHeaders() });
-      if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem('auth_token');
-        window.location.reload();
-      }
-      const data = await res.json();
-      if (data.contacts) setContacts(data.contacts);
-    } catch (error) {
-      console.error("Error fetching contacts:", error);
-    }
+    const { ok, data } = await mockApi.getContacts();
+    if (ok) setContacts(data.contacts);
   };
 
   useEffect(() => {
@@ -39,49 +25,27 @@ const ContactsPage = () => {
     e.preventDefault();
     if (!name || !phone) return;
     setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/contacts`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ name, phone })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMsg({ text: 'Contact added successfully!', type: 'success' });
-        setName('');
-        setPhone('');
-        fetchContacts();
-      } else {
-        setMsg({ text: data.error || 'Failed to add contact', type: 'error' });
-      }
-    } catch (error) {
-      setMsg({ text: 'Network error', type: 'error' });
-    } finally {
-      setLoading(false);
-      setTimeout(() => setMsg({ text: '', type: '' }), 3000);
+    const { ok, data, error } = await mockApi.addContact(name, phone);
+    if (ok) {
+      setMsg({ text: 'Contact added successfully!', type: 'success' });
+      setName('');
+      setPhone('');
+      fetchContacts();
+    } else {
+      setMsg({ text: error || 'Failed to add contact', type: 'error' });
     }
+    setLoading(false);
+    setTimeout(() => setMsg({ text: '', type: '' }), 3000);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this contact?")) return;
-    
-    try {
-      const res = await fetch(`${API_BASE}/contacts/${id}`, {
-        method: 'DELETE',
-        headers: getHeaders()
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMsg({ text: 'Contact deleted successfully!', type: 'success' });
-        fetchContacts();
-      } else {
-        setMsg({ text: data.error || 'Failed to delete contact', type: 'error' });
-      }
-    } catch (error) {
-      setMsg({ text: 'Network error during deletion', type: 'error' });
-    } finally {
-      setTimeout(() => setMsg({ text: '', type: '' }), 3000);
+    const { ok } = await mockApi.deleteContact(id);
+    if (ok) {
+      setMsg({ text: 'Contact deleted successfully!', type: 'success' });
+      fetchContacts();
     }
+    setTimeout(() => setMsg({ text: '', type: '' }), 3000);
   };
 
   const handleFileUpload = async (e) => {
@@ -89,29 +53,20 @@ const ContactsPage = () => {
     if (!file) return;
     
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch(`${API_BASE}/contacts/upload`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMsg({ text: `Upload complete. Added: ${data.inserted}. Skipped: ${data.skipped}.`, type: 'success' });
-        fetchContacts();
-      } else {
-        setMsg({ text: data.error || 'Failed to upload CSV', type: 'error' });
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const { ok, data } = await mockApi.uploadContacts(results.data);
+        if (ok) {
+          setMsg({ text: `Upload complete. Added: ${data.inserted}.`, type: 'success' });
+          fetchContacts();
+        }
+        setUploading(false);
+        e.target.value = null;
+        setTimeout(() => setMsg({ text: '', type: '' }), 4000);
       }
-    } catch (error) {
-      setMsg({ text: 'Network error during upload', type: 'error' });
-    } finally {
-      setUploading(false);
-      e.target.value = null;
-      setTimeout(() => setMsg({ text: '', type: '' }), 4000);
-    }
+    });
   };
 
   return (

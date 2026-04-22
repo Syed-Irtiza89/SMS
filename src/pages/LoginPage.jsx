@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
+import { mockApi } from '../api';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const LoginPage = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -16,26 +16,15 @@ const LoginPage = ({ onLogin }) => {
     setLoading(true);
     setError('');
 
-    try {
-      const res = await fetch(`${API_BASE}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      const data = await res.json();
-      
-      if (res.ok) {
-        localStorage.setItem('auth_token', data.token);
-        onLogin(data.token);
-        navigate('/');
-      } else {
-        setError(data.error || 'Invalid credentials');
-      }
-    } catch (err) {
-      setError('Network error connecting to server.');
-    } finally {
-      setLoading(false);
+    const { ok, data, error } = await mockApi.login(username, password);
+    
+    if (ok) {
+      onLogin(data.token);
+      navigate('/');
+    } else {
+      setError(error || 'Invalid credentials');
     }
+    setLoading(false);
   };
 
   return (

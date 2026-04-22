@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { mockApi } from '../api';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const HistoryPage = () => {
   const [history, setHistory] = useState([]);
@@ -8,17 +8,9 @@ const HistoryPage = () => {
 
   useEffect(() => {
     const fetchHistory = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/history`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        });
-        const data = await res.json();
-        if (data.history) setHistory(data.history);
-      } catch (error) {
-        console.error("Error fetching history:", error);
-      } finally {
-        setLoading(false);
-      }
+      const { ok, data } = await mockApi.getHistory();
+      if (ok) setHistory(data.history);
+      setLoading(false);
     };
     fetchHistory();
   }, []);

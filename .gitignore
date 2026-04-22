@@ -22,14 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Environment
-.env
-.env.*
-
-# SQLite
-*.sqlite
-*.db
-
-# Backend uploads
-server/uploads/

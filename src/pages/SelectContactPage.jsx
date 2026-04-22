@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, CheckSquare, Square } from 'lucide-react';
+import { mockApi } from '../api';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const SelectContactPage = () => {
   const [contacts, setContacts] = useState([]);
@@ -21,15 +21,8 @@ const SelectContactPage = () => {
     }
 
     const fetchContacts = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/contacts`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        });
-        const data = await res.json();
-        if (data.contacts) setContacts(data.contacts);
-      } catch (error) {
-        console.error("Error fetching contacts:", error);
-      }
+      const { ok, data } = await mockApi.getContacts();
+      if (ok) setContacts(data.contacts);
     };
     fetchContacts();
   }, [navigate]);
@@ -52,34 +45,18 @@ const SelectContactPage = () => {
 
   const handleSend = async () => {
     if (selectedIds.length === 0) return;
-    
-    // Quick confirmation
     if (!window.confirm(`Are you sure you want to send this SMS to ${selectedIds.length} contacts?`)) return;
 
     setSending(true);
     setResult(null);
 
-    try {
-      const res = await fetch(`${API_BASE}/send`, {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({ message: messageDraft, contactIds: selectedIds })
-      });
-      const data = await res.json();
-      
-      if (res.ok) {
-        setResult({ type: 'success', data });
-      } else {
-        setResult({ type: 'error', error: data.error || 'Failed to send batch SMS.' });
-      }
-    } catch (error) {
-      setResult({ type: 'error', error: 'Network error communicating with server.' });
-    } finally {
-      setSending(false);
+    const { ok, data, error } = await mockApi.sendSMS(messageDraft, selectedIds);
+    if (ok) {
+      setResult({ type: 'success', data });
+    } else {
+      setResult({ type: 'error', error: error || 'Failed to send batch SMS.' });
     }
+    setSending(false);
   };
 
   const goHistory = () => {
