@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Papa from 'papaparse';
 import { UploadCloud, Plus, Trash2 } from 'lucide-react';
 import { mockApi } from '../api';
 
@@ -51,22 +50,18 @@ const ContactsPage = () => {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     setUploading(true);
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const { ok, data } = await mockApi.uploadContacts(results.data);
-        if (ok) {
-          setMsg({ text: `Upload complete. Added: ${data.inserted}.`, type: 'success' });
-          fetchContacts();
-        }
-        setUploading(false);
-        e.target.value = null;
-        setTimeout(() => setMsg({ text: '', type: '' }), 4000);
-      }
-    });
+    const { ok, data, error } = await mockApi.uploadContacts(file);
+    if (ok) {
+      setMsg({ text: `Upload complete. Added: ${data.inserted}, Skipped: ${data.skipped}.`, type: 'success' });
+      fetchContacts();
+    } else {
+      setMsg({ text: error || 'Upload failed', type: 'error' });
+    }
+    setUploading(false);
+    e.target.value = null;
+    setTimeout(() => setMsg({ text: '', type: '' }), 4000);
   };
 
   return (

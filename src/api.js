@@ -1,97 +1,116 @@
-// Mock API Service using LocalStorage
-// This replaces the backend calls since we are now frontend-only.
+const API_BASE_URL = 'http://localhost:5000/api';
 
-const STORAGE_KEYS = {
-  AUTH_TOKEN: 'auth_token',
-  CONTACTS: 'sms_contacts',
-  HISTORY: 'sms_history'
+const getHeaders = () => {
+  const token = localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
 };
 
-// Initialize with some mock data if empty
-const initMockData = () => {
-  if (!localStorage.getItem(STORAGE_KEYS.CONTACTS)) {
-    localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify([
-      { id: 1, name: 'Sample Lead 1', phone: '+1234567890' },
-      { id: 2, name: 'Sample Lead 2', phone: '+1987654321' }
-    ]));
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.HISTORY)) {
-    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify([]));
-  }
-};
-
-initMockData();
-
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-export const mockApi = {
+export const api = {
   login: async (username, password) => {
-    await delay(800);
-    if (username === 'admin' && password === 'password') {
-      const token = 'mock-jwt-token-' + Date.now();
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-      return { ok: true, data: { token } };
+    try {
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem('auth_token', data.token);
+        return { ok: true, data };
+      }
+      return { ok: false, error: data.error };
+    } catch (e) {
+      return { ok: false, error: 'Connection failed' };
     }
-    return { ok: false, error: 'Invalid username or password (use admin/password)' };
   },
 
   getContacts: async () => {
-    await delay(500);
-    const contacts = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTACTS) || '[]');
-    return { ok: true, data: { contacts } };
+    try {
+      const response = await fetch(`${API_BASE_URL}/contacts`, {
+        headers: getHeaders()
+      });
+      const data = await response.json();
+      return { ok: response.ok, data };
+    } catch (e) {
+      return { ok: false, error: 'Connection failed' };
+    }
   },
 
   addContact: async (name, phone) => {
-    await delay(500);
-    const contacts = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTACTS) || '[]');
-    const newContact = { id: Date.now(), name, phone };
-    contacts.push(newContact);
-    localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(contacts));
-    return { ok: true, data: newContact };
+    try {
+      const response = await fetch(`${API_BASE_URL}/contacts`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ name, phone })
+      });
+      const data = await response.json();
+      return { ok: response.ok, data };
+    } catch (e) {
+      return { ok: false, error: 'Connection failed' };
+    }
   },
 
   deleteContact: async (id) => {
-    await delay(500);
-    let contacts = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTACTS) || '[]');
-    contacts = contacts.filter(c => c.id !== id);
-    localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(contacts));
-    return { ok: true };
+    try {
+      const response = await fetch(`${API_BASE_URL}/contacts/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      return { ok: response.ok };
+    } catch (e) {
+      return { ok: false, error: 'Connection failed' };
+    }
   },
 
-  uploadContacts: async (fileContent) => {
-    await delay(1000);
-    // Note: In real frontend-only, we parse CSV on client. 
-    // This function assumes we passed the parsed contacts or it handles parsing.
-    // For simplicity, let's assume this is called with an array of contacts.
-    const contacts = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONTACTS) || '[]');
-    const newContacts = fileContent.map((c, index) => ({
-      id: Date.now() + index,
-      name: c.name || 'Unknown',
-      phone: c.phone || ''
-    }));
-    const updated = [...contacts, ...newContacts];
-    localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(updated));
-    return { ok: true, data: { inserted: newContacts.length, skipped: 0 } };
+  uploadContacts: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`${API_BASE_URL}/contacts/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: formData
+      });
+      const data = await response.json();
+      return { ok: response.ok, data };
+    } catch (e) {
+      return { ok: false, error: 'Connection failed' };
+    }
   },
 
   sendSMS: async (message, contactIds) => {
-    await delay(1500);
-    const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY) || '[]');
-    const newEntry = {
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
-      message,
-      recipients_count: contactIds.length,
-      status: 'Sent'
-    };
-    history.unshift(newEntry);
-    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
-    return { ok: true, data: { status: 'Sent', sent: contactIds.length, failed: 0 } };
+    try {
+      const response = await fetch(`${API_BASE_URL}/send-sms`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ message, contactIds })
+      });
+      const data = await response.json();
+      return { ok: response.ok, data };
+    } catch (e) {
+      return { ok: false, error: 'Connection failed' };
+    }
   },
 
   getHistory: async () => {
-    await delay(500);
-    const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY) || '[]');
-    return { ok: true, data: { history } };
+    try {
+      const response = await fetch(`${API_BASE_URL}/history`, {
+        headers: getHeaders()
+      });
+      const data = await response.json();
+      return { ok: response.ok, data };
+    } catch (e) {
+      return { ok: false, error: 'Connection failed' };
+    }
   }
 };
+
+// Keep mockApi export for compatibility if any component still uses it explicitly
+export const mockApi = api;
+
