@@ -27,7 +27,7 @@ const uploadsDir = process.env.RENDER
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
-const upload = multer({ dest: uploadsDir });
+const upload = multer({ dest: uploadsDir, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB limit
 
 // ── CORS ─────────────────────────────────────────────────────
 // Allow any origin so the React frontend (wherever it's hosted) can connect
@@ -92,7 +92,7 @@ const safeUnlink = (filePath) => {
 // ── Helper: send SMS with concurrency ────────────────────────
 // Sends in parallel batches of `batchSize` to avoid request timeouts
 // while still being respectful of Twilio rate limits.
-const sendSmsBatch = async (twilioClient, numbers, message, batchSize = 10) => {
+const sendSmsBatch = async (twilioClient, numbers, message, batchSize = 50) => {
     let successCount = 0;
     let failCount = 0;
     const errors = [];
@@ -172,7 +172,11 @@ app.post('/api/contacts', authenticateToken, (req, res) => {
     if (!name || !phone) {
         return res.status(400).json({ error: 'Name and phone are required' });
     }
-    db.run(`INSERT INTO contacts (name, phone) VALUES (?, ?)`, [name, phone], function(err) {
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phone.replace(/\s+/g, ''))) {
+        return res.status(400).json({ error: 'Invalid phone number format. Must contain a valid country code (e.g., +1234567890).' });
+    }
+    db.run(`INSERT INTO contacts (name, phone) VALUES (?, ?)`, [name, phone.replace(/\s+/g, '')], function(err) {
         if (err) {
             // Duplicate phone number
             if (err.message.includes('UNIQUE constraint failed')) {
@@ -206,9 +210,11 @@ app.post('/api/contacts/upload', authenticateToken, upload.single('file'), (req,
 
             for (const row of results) {
                 const name = (row.name || row.Name || row.NAME || '').trim() || 'Unknown';
-                const phone = (row.phone || row.Phone || row.PHONE || row.number || row.Number || '').trim();
+                const phone = (row.phone || row.Phone || row.PHONE || row.number || row.Number || '').replace(/\s+/g, '');
 
                 if (!phone) { skipped++; continue; }
+                const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+                if (!phoneRegex.test(phone)) { skipped++; continue; }
 
                 try {
                     await new Promise((resolve, reject) => {

@@ -1,5 +1,15 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+const fetchApi = async (url, options) => {
+  const response = await fetch(url, options);
+  if ((response.status === 401 || response.status === 403) && !url.includes('/login')) {
+    localStorage.removeItem('auth_token');
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
+  return response;
+};
+
 const getHeaders = () => {
   const token = localStorage.getItem('auth_token');
   return {
@@ -11,7 +21,7 @@ const getHeaders = () => {
 export const api = {
   login: async (username, password) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const response = await fetchApi(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -29,7 +39,7 @@ export const api = {
 
   getContacts: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/contacts`, {
+      const response = await fetchApi(`${API_BASE_URL}/contacts`, {
         headers: getHeaders()
       });
       const data = await response.json();
@@ -41,7 +51,7 @@ export const api = {
 
   addContact: async (name, phone) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/contacts`, {
+      const response = await fetchApi(`${API_BASE_URL}/contacts`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ name, phone })
@@ -55,7 +65,7 @@ export const api = {
 
   deleteContact: async (id) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/contacts/${id}`, {
+      const response = await fetchApi(`${API_BASE_URL}/contacts/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -70,7 +80,7 @@ export const api = {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`${API_BASE_URL}/contacts/upload`, {
+      const response = await fetchApi(`${API_BASE_URL}/contacts/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
@@ -86,7 +96,7 @@ export const api = {
 
   sendSMS: async (message, contactIds) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/send-sms`, {
+      const response = await fetchApi(`${API_BASE_URL}/send-sms`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ message, contactIds })
@@ -100,7 +110,7 @@ export const api = {
 
   getHistory: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/history`, {
+      const response = await fetchApi(`${API_BASE_URL}/history`, {
         headers: getHeaders()
       });
       const data = await response.json();
