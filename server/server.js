@@ -51,18 +51,17 @@ const getTwilioClient = () => {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const apiKeySid = process.env.TWILIO_API_KEY_SID;
     const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
-
-    // Prefer API Key auth
-    if (apiKeySid && apiKeySecret &&
-        !apiKeySid.includes('xxx') && !apiKeySecret.includes('xxx')) {
-        return twilio(apiKeySid, apiKeySecret, { accountSid });
-    }
-
-    // Fall back to Auth Token auth
+    // Prefer Auth Token auth
     if (accountSid && authToken &&
         !accountSid.includes('xxx') && !authToken.includes('xxx') &&
         accountSid.startsWith('AC')) {
         return twilio(accountSid, authToken);
+    }
+
+    // Fall back to API Key auth
+    if (apiKeySid && apiKeySecret &&
+        !apiKeySid.includes('xxx') && !apiKeySecret.includes('xxx')) {
+        return twilio(apiKeySid, apiKeySecret, { accountSid });
     }
 
     return null; // simulation mode
