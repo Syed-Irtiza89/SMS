@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { mockApi } from '../api';
+import { api } from '../api';
 
 
 const HistoryPage = () => {
@@ -8,7 +8,7 @@ const HistoryPage = () => {
 
   useEffect(() => {
     const fetchHistory = async () => {
-      const { ok, data } = await mockApi.getHistory();
+      const { ok, data } = await api.getHistory();
       if (ok) setHistory(data.history);
       setLoading(false);
     };

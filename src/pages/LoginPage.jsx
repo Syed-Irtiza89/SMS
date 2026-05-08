@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
-import { mockApi } from '../api';
+import { api } from '../api';
 
 
 const LoginPage = ({ onLogin }) => {
@@ -16,7 +16,7 @@ const LoginPage = ({ onLogin }) => {
     setLoading(true);
     setError('');
 
-    const { ok, data, error } = await mockApi.login(username, password);
+    const { ok, data, error } = await api.login(username, password);
     
     if (ok) {
       onLogin(data.token);

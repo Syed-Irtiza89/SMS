@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, Plus, Trash2 } from 'lucide-react';
-import { mockApi } from '../api';
+import { api } from '../api';
 
 
 const ContactsPage = () => {
@@ -12,7 +12,7 @@ const ContactsPage = () => {
   const [msg, setMsg] = useState({ text: '', type: '' });
 
   const fetchContacts = async () => {
-    const { ok, data } = await mockApi.getContacts();
+    const { ok, data } = await api.getContacts();
     if (ok) setContacts(data.contacts);
   };
 
@@ -24,7 +24,7 @@ const ContactsPage = () => {
     e.preventDefault();
     if (!name || !phone) return;
     setLoading(true);
-    const { ok, data, error } = await mockApi.addContact(name, phone);
+    const { ok, data, error } = await api.addContact(name, phone);
     if (ok) {
       setMsg({ text: 'Contact added successfully!', type: 'success' });
       setName('');
@@ -39,7 +39,7 @@ const ContactsPage = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this contact?")) return;
-    const { ok } = await mockApi.deleteContact(id);
+    const { ok } = await api.deleteContact(id);
     if (ok) {
       setMsg({ text: 'Contact deleted successfully!', type: 'success' });
       fetchContacts();
@@ -52,7 +52,7 @@ const ContactsPage = () => {
     if (!file) return;
 
     setUploading(true);
-    const { ok, data, error } = await mockApi.uploadContacts(file);
+    const { ok, data, error } = await api.uploadContacts(file);
     if (ok) {
       setMsg({ text: `Upload complete. Added: ${data.inserted}, Skipped: ${data.skipped}.`, type: 'success' });
       fetchContacts();
